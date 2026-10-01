@@ -189,3 +189,30 @@ Document the chosen thresholds in `docs/scoring.md` so another engineer can revi
 ### Reason
 
 The assignment asks for explicit, easy-to-modify heuristics with tested boundary behavior. Inventing opaque magic numbers without documenting them would hide product assumptions.
+
+---
+
+## 2026-10-01 — GraphQL city forecast orchestration
+
+### Question
+
+How should the GraphQL layer obtain city weather and activity scores without embedding provider/scoring logic in resolvers?
+
+### Decision
+
+Introduce `createCityForecastService` as the application orchestrator:
+
+1. Geocode the city name (best Open-Meteo match)
+2. Upsert the city
+3. Serve persisted 7-day forecasts when complete and fresh (6 hours)
+4. Otherwise refresh Forecast + Marine APIs, persist normalized rows, then score
+
+Resolvers only call the service and map domain errors to GraphQL error codes (`CITY_NOT_FOUND`, `EXTERNAL_PROVIDER_ERROR`).
+
+Public Weather fields omit precipitation probability and cloud cover because they are outside the MVP domain model.
+
+Marine refresh failures are soft: weather is still persisted with null wave fields.
+
+### Reason
+
+This keeps GraphQL as a transport layer and matches the modular monolith boundaries in `AGENTS.md`.

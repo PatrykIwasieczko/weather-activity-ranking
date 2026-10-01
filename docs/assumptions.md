@@ -141,3 +141,11 @@ Provider-specific response formats remain inside the integration layer.
 **Question:** Are these scores intended as professional weather or activity advice?
 
 **Assumption:** No. They are heuristic activity-suitability scores for the purpose of this exercise.
+
+---
+
+## GraphQL weather fields
+
+**Question:** Should the GraphQL weather payload include precipitation probability and cloud cover?
+
+**Assumption:** No for the MVP. Those fields are not part of the persisted/scoring domain model, so the public schema exposes only the normalized fields we actually store and score on.

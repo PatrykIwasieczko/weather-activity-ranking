@@ -34,7 +34,38 @@ npm run dev
 
 GraphQL endpoint: `http://localhost:4000/graphql`
 
-Health check query:
+Example query:
+
+```graphql
+query {
+  city(name: "Zakopane") {
+    name
+    country
+    latitude
+    longitude
+    timezone
+    forecast {
+      date
+      weather {
+        temperatureMin
+        temperatureMax
+        precipitationSum
+        snowfallSum
+        windSpeedMax
+        waveHeightMax
+        wavePeriodMax
+      }
+      activities {
+        activity
+        score
+        reasons
+      }
+    }
+  }
+}
+```
+
+Health check:
 
 ```graphql
 query {
@@ -63,27 +94,15 @@ query {
 ```text
 src/
   index.ts
-  graphql/schema.ts
+  app/                     # City forecast orchestration service
+  graphql/                 # Schema + resolvers (transport only)
   db/prisma.ts
-  weather/
-    domain.ts
-    open-meteo/
+  weather/open-meteo/
   persistence/
-    city-repository.ts
-    forecast-repository.ts
-    types.ts
   activities/
-    skiing.ts
-    surfing.ts
-    outdoor-sightseeing.ts
-    indoor-sightseeing.ts
 prisma/
   schema.prisma
 tests/
-  health.test.ts
-  weather/
-  persistence/
-  activities/
 ```
 
-> Work in progress. Forecast refresh orchestration and the final GraphQL schema are not implemented yet.
+The GraphQL `city` query geocodes the name, lazily refreshes a 7-day forecast when stale, persists normalized weather, and returns activity scores.
