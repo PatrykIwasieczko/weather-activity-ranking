@@ -202,16 +202,21 @@ How should the GraphQL layer obtain city weather and activity scores without emb
 
 Introduce `createCityForecastService` as the application orchestrator:
 
-1. Geocode the city name (best Open-Meteo match)
-2. Upsert the city
-3. Serve persisted 7-day forecasts when complete and fresh (6 hours)
-4. Otherwise refresh Forecast + Marine APIs, persist normalized rows, then score
+1. Look up the city by name in the database when possible
+2. If a complete 7-day forecast is fresh (≤ 6 hours), return it and do not call Open-Meteo
+3. If the city is unknown, geocode via Open-Meteo and upsert
+4. If the forecast is missing or stale, refresh Forecast + Marine APIs, persist, and return
+5. If refresh fails but a complete older window exists, return that window
 
 Resolvers only call the service and map domain errors to GraphQL error codes (`CITY_NOT_FOUND`, `EXTERNAL_PROVIDER_ERROR`).
 
 Public Weather fields omit precipitation probability and cloud cover because they are outside the MVP domain model.
 
 Marine refresh failures are soft: weather is still persisted with null wave fields.
+
+### Known limitation
+
+Concurrent requests for the same stale city can each trigger a duplicate Open-Meteo refresh. The MVP intentionally does not add locks, queues, or background workers.
 
 ### Reason
 

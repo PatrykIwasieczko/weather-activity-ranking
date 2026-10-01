@@ -105,4 +105,6 @@ prisma/
 tests/
 ```
 
-The GraphQL `city` query geocodes the name, lazily refreshes a 7-day forecast when stale, persists normalized weather, and returns activity scores.
+The GraphQL `city` query looks up a persisted city/forecast first. Fresh 7-day data (≤ 6 hours) is returned without calling Open-Meteo. Missing or stale data is refreshed synchronously, persisted, and then returned. If refresh fails but an older complete forecast exists, that forecast is returned.
+
+Known MVP limitation: concurrent requests for the same stale city can cause duplicate Open-Meteo calls.

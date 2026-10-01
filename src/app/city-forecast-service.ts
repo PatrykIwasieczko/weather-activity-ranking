@@ -5,6 +5,7 @@ import type {
   ForecastRepository,
 } from "../persistence/index.js";
 import type {
+  CityRecord,
   DailyForecastRecord,
   UpsertDailyForecastInput,
 } from "../persistence/types.js";
@@ -38,6 +39,15 @@ export type CityForecastServiceDeps = {
   freshnessMs?: number;
 };
 
+/**
+ * Lazy-refresh orchestrator:
+ * 1. Prefer a persisted city + 7-day forecast when complete and fresh (≤ 6h).
+ * 2. Otherwise fetch Forecast/Marine from Open-Meteo, persist, and return.
+ * 3. If refresh fails but a complete older window exists, return that window.
+ *
+ * Known MVP limitation: concurrent requests for the same stale city can each
+ * trigger a duplicate Open-Meteo refresh. No locks/queues in the MVP.
+ */
 export function createCityForecastService(
   deps: CityForecastServiceDeps,
 ): CityForecastService {
@@ -51,79 +61,100 @@ export function createCityForecastService(
         throw new CityNotFoundError(name);
       }
 
-      const geocodingResults = await mapProviderCall(() =>
-        deps.geocoding.search({ name: trimmed, count: 1 }),
-      );
-
-      const match = geocodingResults[0];
-      if (!match) {
-        throw new CityNotFoundError(trimmed);
-      }
-
-      const city = await deps.cities.upsert({
-        openMeteoId: match.id,
-        name: match.name,
-        latitude: match.latitude,
-        longitude: match.longitude,
-        countryCode: match.countryCode,
-        country: match.country,
-        admin1: match.admin1,
-        timezone: match.timezone,
-        elevationMeters: match.elevationMeters,
-        population: match.population,
-      });
-
       const currentTime = now();
-      const timeZone = city.timezone ?? "UTC";
-      const fromDate = localDateString(timeZone, currentTime);
 
-      const existing = await deps.forecasts.findForCityRange({
-        cityId: city.id,
-        fromDate,
-        dayCount: FORECAST_DAYS,
-      });
-
-      const complete = isCompleteForecastWindow(existing, fromDate);
-      const fresh =
-        complete && isFreshForecastWindow(existing, currentTime, freshnessMs);
-
-      if (fresh) {
-        return {
-          city,
-          forecast: toCityForecastDays(existing),
-        };
+      const knownCity = await deps.cities.findByName(trimmed);
+      if (knownCity) {
+        return resolveForecastForCity(deps, knownCity, currentTime, freshnessMs);
       }
 
-      try {
-        const refreshed = await refreshAndPersist(deps, city, currentTime);
-        return {
-          city,
-          forecast: toCityForecastDays(refreshed),
-        };
-      } catch (error) {
-        if (complete) {
-          return {
-            city,
-            forecast: toCityForecastDays(existing),
-          };
-        }
-
-        if (error instanceof ExternalProviderError) {
-          throw error;
-        }
-
-        throw new ExternalProviderError(
-          "Failed to refresh weather forecast from provider",
-          { cause: error },
-        );
-      }
+      const city = await resolveCityFromGeocoding(deps, trimmed);
+      return resolveForecastForCity(deps, city, currentTime, freshnessMs);
     },
   };
 }
 
+async function resolveCityFromGeocoding(
+  deps: CityForecastServiceDeps,
+  name: string,
+): Promise<CityRecord> {
+  const geocodingResults = await mapProviderCall(() =>
+    deps.geocoding.search({ name, count: 1 }),
+  );
+
+  const match = geocodingResults[0];
+  if (!match) {
+    throw new CityNotFoundError(name);
+  }
+
+  return deps.cities.upsert({
+    openMeteoId: match.id,
+    name: match.name,
+    latitude: match.latitude,
+    longitude: match.longitude,
+    countryCode: match.countryCode,
+    country: match.country,
+    admin1: match.admin1,
+    timezone: match.timezone,
+    elevationMeters: match.elevationMeters,
+    population: match.population,
+  });
+}
+
+async function resolveForecastForCity(
+  deps: CityForecastServiceDeps,
+  city: CityRecord,
+  currentTime: Date,
+  freshnessMs: number,
+): Promise<CityForecastResult> {
+  const timeZone = city.timezone ?? "UTC";
+  const fromDate = localDateString(timeZone, currentTime);
+
+  const existing = await deps.forecasts.findForCityRange({
+    cityId: city.id,
+    fromDate,
+    dayCount: FORECAST_DAYS,
+  });
+
+  const complete = isCompleteForecastWindow(existing, fromDate);
+  const fresh =
+    complete && isFreshForecastWindow(existing, currentTime, freshnessMs);
+
+  if (fresh) {
+    return {
+      city,
+      forecast: toCityForecastDays(existing),
+    };
+  }
+
+  try {
+    const refreshed = await refreshAndPersist(deps, city, currentTime);
+    return {
+      city,
+      forecast: toCityForecastDays(refreshed),
+    };
+  } catch (error) {
+    if (complete) {
+      return {
+        city,
+        forecast: toCityForecastDays(existing),
+      };
+    }
+
+    if (error instanceof ExternalProviderError) {
+      throw error;
+    }
+
+    throw new ExternalProviderError(
+      "Failed to refresh weather forecast from provider",
+      { cause: error },
+    );
+  }
+}
+
 async function refreshAndPersist(
   deps: CityForecastServiceDeps,
-  city: CityForecastResult["city"],
+  city: CityRecord,
   fetchedAt: Date,
 ): Promise<DailyForecastRecord[]> {
   const timezone = city.timezone ?? "auto";

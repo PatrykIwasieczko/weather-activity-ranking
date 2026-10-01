@@ -122,7 +122,7 @@ This is a pragmatic MVP value rather than a claim about the exact rate at which 
 
 **MVP assumption:** Duplicate provider requests are possible.
 
-This is a known limitation and may be improved later with locking or background refresh.
+This is a known limitation of the synchronous lazy-refresh design. The MVP does not introduce Redis, queues, distributed locks, background workers, or scheduled jobs to prevent it. A later improvement could add request coalescing or locking if needed.
 
 ---
 
