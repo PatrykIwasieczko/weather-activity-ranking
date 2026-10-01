@@ -84,6 +84,10 @@ The MVP does not account for individual beaches, surf breaks, beach orientation,
 
 This behavior may be revisited if a better way to identify non-coastal locations is introduced.
 
+**Question:** Where does surfing wind come from?
+
+**Assumption:** Open-Meteo's Marine API does not expose wind variables. Surfing wind uses the Forecast API daily field `wind_speed_10m_max` for the same coordinates/date. Wave height and period come from the Marine API.
+
 ---
 
 ## Weather persistence

@@ -109,3 +109,38 @@ Use ESM (`"type": "module"`), NodeNext module resolution, and Node's built-in `-
 Prisma 7+ moves connection config into `prisma.config.ts` and can require driver adapters / Accelerate for the client engine. That is unnecessary complexity for a local PostgreSQL MVP.
 
 Prisma 6 keeps the classic `schema.prisma` + `DATABASE_URL` workflow expected for this exercise.
+
+---
+
+## 2026-10-01 — Open-Meteo daily fields for MVP
+
+### Question
+
+Which Open-Meteo variables should the integration layer request?
+
+### Decision
+
+Forecast API daily variables:
+
+- `temperature_2m_max`
+- `temperature_2m_min`
+- `precipitation_sum`
+- `snowfall_sum`
+- `wind_speed_10m_max`
+
+Marine API daily variables:
+
+- `wave_height_max`
+- `wave_period_max`
+
+Request 7 local calendar days with `timezone=auto` (or the geocoded timezone when available later). Prefer `cell_selection=sea` for marine requests.
+
+Keep provider response types under `src/weather/open-meteo/*-types.ts` and map into `src/weather/domain.ts`.
+
+Inject an `HttpGet` function so tests can mock transport without calling the live API.
+
+### Reason
+
+These are the documented daily fields that cover the MVP scoring inputs. Cloud cover is intentionally omitted. Temperature is stored as daily max/min rather than inventing a single “temperature” metric.
+
+Wind for surfing is taken from the Forecast API because the Marine API does not provide wind.
