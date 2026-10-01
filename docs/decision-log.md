@@ -83,3 +83,29 @@ A numeric score allows days to be ranked while factor-specific reasons make the 
 ### Assumption
 
 The scoring model is heuristic and is not presented as professional activity or weather advice.
+
+---
+
+## 2026-09-30 — Project bootstrap versions
+
+### Question
+
+Which library versions should the MVP start from, given current npm defaults include Prisma 7/8 platform changes?
+
+### Decision
+
+Pin:
+
+- Prisma ORM + Client `6.19.3`
+- TypeScript `5.9.x`
+- GraphQL Yoga `5.x`
+- Vitest `5.x`
+- PostgreSQL `16` via Docker Compose
+
+Use ESM (`"type": "module"`), NodeNext module resolution, and Node's built-in `--env-file` instead of adding `dotenv`.
+
+### Reason
+
+Prisma 7+ moves connection config into `prisma.config.ts` and can require driver adapters / Accelerate for the client engine. That is unnecessary complexity for a local PostgreSQL MVP.
+
+Prisma 6 keeps the classic `schema.prisma` + `DATABASE_URL` workflow expected for this exercise.

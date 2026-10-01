@@ -1,0 +1,11 @@
+// Application models will be added in later increments.
+// This initial schema only establishes Prisma + PostgreSQL wiring.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
