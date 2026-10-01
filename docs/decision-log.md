@@ -144,3 +144,26 @@ Inject an `HttpGet` function so tests can mock transport without calling the liv
 These are the documented daily fields that cover the MVP scoring inputs. Cloud cover is intentionally omitted. Temperature is stored as daily max/min rather than inventing a single “temperature” metric.
 
 Wind for surfing is taken from the Forecast API because the Marine API does not provide wind.
+
+---
+
+## 2026-10-01 — Persistence schema for City and DailyForecast
+
+### Question
+
+How should normalized weather be stored for freshness checks and scoring?
+
+### Decision
+
+Introduce two Prisma models:
+
+- `City` keyed by internal `id`, uniquely identified externally by `openMeteoId`
+- `DailyForecast` with a unique `(cityId, date)` pair
+
+`DailyForecast` stores MVP scoring inputs plus `fetchedAt`. Marine wave fields are nullable so inland locations can be persisted without inventing values.
+
+Repositories map Prisma rows to persistence records (`CityRecord`, `DailyForecastRecord`) and accept plain upsert inputs, keeping Prisma models out of higher layers.
+
+### Reason
+
+This matches the assignment constraints: persist normalized data, enforce city/date uniqueness, track freshness, and keep provider payloads out of the database.

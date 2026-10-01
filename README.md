@@ -62,17 +62,22 @@ query {
 
 ```text
 src/
-  index.ts                 # HTTP + GraphQL Yoga entrypoint
-  graphql/schema.ts        # GraphQL schema (health query for now)
-  db/prisma.ts             # Prisma client
+  index.ts
+  graphql/schema.ts
+  db/prisma.ts
   weather/
-    domain.ts              # Internal weather/marine/location types
-    open-meteo/            # Typed Open-Meteo clients + response mapping
+    domain.ts
+    open-meteo/
+  persistence/
+    city-repository.ts
+    forecast-repository.ts
+    types.ts
 prisma/
-  schema.prisma            # Database schema
+  schema.prisma
 tests/
   health.test.ts
-  weather/                 # Open-Meteo client unit tests (mocked HTTP)
+  weather/
+  persistence/
 ```
 
-> Work in progress. Persistence, activity scoring, and the final GraphQL schema are not implemented yet.
+> Work in progress. Activity scoring, forecast refresh orchestration, and the final GraphQL schema are not implemented yet.
