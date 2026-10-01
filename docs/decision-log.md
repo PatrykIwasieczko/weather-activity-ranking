@@ -167,3 +167,25 @@ Repositories map Prisma rows to persistence records (`CityRecord`, `DailyForecas
 ### Reason
 
 This matches the assignment constraints: persist normalized data, enforce city/date uniqueness, track freshness, and keep provider payloads out of the database.
+
+---
+
+## 2026-10-01 — Explicit MVP scoring thresholds
+
+### Question
+
+`docs/scoring.md` defined weights but not numeric factor curves. What thresholds should the implementation use?
+
+### Decision
+
+Keep weights exactly as specified. Encode simple, deterministic curves in pure functions under `src/activities/`:
+
+- rising / falling / plateau / inverted-plateau helpers
+- daily mean temperature `(max + min) / 2`
+- surfing short-circuits to score 0 when either marine field is null
+
+Document the chosen thresholds in `docs/scoring.md` so another engineer can revise them without reverse-engineering tests.
+
+### Reason
+
+The assignment asks for explicit, easy-to-modify heuristics with tested boundary behavior. Inventing opaque magic numbers without documenting them would hide product assumptions.

@@ -18,7 +18,16 @@ sum(factorScore × factorWeight)
 
 The final value is rounded to an integer and constrained to the range 0–100.
 
-Reasons are generated from the factors that materially influence the result.
+Temperature factors use the daily mean:
+
+```text
+(temperatureMaxC + temperatureMinC) / 2
+```
+
+Reasons are generated from the factors that materially influence the result
+(typically factor scores ≥ 70 or ≤ 40).
+
+Implementation lives in `src/activities/` as pure functions over `DailyConditions`.
 
 ---
 
@@ -32,6 +41,15 @@ Reasons are generated from the factors that materially influence the result.
 | Temperature   |    25% |
 | Wind          |    20% |
 | Precipitation |    15% |
+
+### MVP thresholds
+
+| Factor        | Heuristic |
+| ------------- | --------- |
+| Snowfall      | 0 cm → 0; 10 cm+ → 100 (linear) |
+| Temperature   | Full score for mean about -12°C to -1°C; 0 at ≤ -25°C or ≥ 8°C |
+| Wind          | Full score at ≤ 20 km/h max; 0 at ≥ 60 km/h |
+| Precipitation | Full score at 0 mm; 0 at ≥ 25 mm |
 
 ### Rationale
 
@@ -57,6 +75,14 @@ Cloud cover is not used in the MVP.
 | Precipitation |    40% |
 | Wind          |    20% |
 
+### MVP thresholds
+
+| Factor        | Heuristic |
+| ------------- | --------- |
+| Temperature   | Full score for mean about 15–24°C; 0 at ≤ -5°C or ≥ 35°C |
+| Precipitation | Full score at 0 mm; 0 at ≥ 20 mm |
+| Wind          | Full score at ≤ 20 km/h max; 0 at ≥ 55 km/h |
+
 ### Rationale
 
 Comfortable temperatures and low precipitation are the primary considerations.
@@ -76,6 +102,14 @@ Cloud cover is not used because the MVP does not attempt to model subjective pre
 | Precipitation |    60% |
 | Temperature   |    30% |
 | Wind          |    10% |
+
+### MVP thresholds
+
+| Factor        | Heuristic |
+| ------------- | --------- |
+| Precipitation | Higher precipitation increases score; ~20 mm → 100 |
+| Temperature   | Inverted outdoor comfort: mild means (~10–24°C) score low; cold/hot extremes score high |
+| Wind          | Higher max wind increases score; ≤ 10 km/h → low; ≥ 55 km/h → 100 |
 
 ### Rationale
 
@@ -99,13 +133,30 @@ Wind has a smaller influence.
 | Wave period |    30% |
 | Wind        |    20% |
 
+### Missing marine data
+
+If `waveHeightMaxM` or `wavePeriodMaxS` is null, surfing returns:
+
+- score `0`
+- reason: `Marine conditions are unavailable for this location`
+
+No weighted surfing score is invented from wind alone.
+
+### MVP thresholds
+
+| Factor      | Heuristic |
+| ----------- | --------- |
+| Wave height | Full score about 1.0–2.5 m; 0 at ≤ 0.2 m or ≥ 5.0 m |
+| Wave period | 4 s → 0; 12 s+ → 100 (linear) |
+| Wind        | Full score at ≤ 15 km/h max; 0 at ≥ 45 km/h |
+
 ### Rationale
 
 Wave conditions are the primary driver of the generic surfing score.
 
 Wave period is used as an additional indicator of wave quality.
 
-Wind is included as a secondary factor.
+Wind is included as a secondary factor and comes from forecast wind, not the Marine API.
 
 The MVP does not account for surf break orientation, swell direction, tides, local hazards, or surfer skill.
 

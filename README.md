@@ -72,12 +72,18 @@ src/
     city-repository.ts
     forecast-repository.ts
     types.ts
+  activities/
+    skiing.ts
+    surfing.ts
+    outdoor-sightseeing.ts
+    indoor-sightseeing.ts
 prisma/
   schema.prisma
 tests/
   health.test.ts
   weather/
   persistence/
+  activities/
 ```
 
-> Work in progress. Activity scoring, forecast refresh orchestration, and the final GraphQL schema are not implemented yet.
+> Work in progress. Forecast refresh orchestration and the final GraphQL schema are not implemented yet.
