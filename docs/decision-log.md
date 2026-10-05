@@ -249,3 +249,28 @@ When the gate zeros the score, omit misleading positive wind/precipitation reaso
 ### Reason
 
 Temperature is a hard constraint for skiing suitability, not only a 25% comfort factor. Secondary factors should refine winter days, not manufacture mid scores when skiing is impossible.
+
+---
+
+## 2026-10-05 — Implementation review hardening
+
+### Context
+
+Final pass against the assignment checklist: timezone handling, provider validation, scoring edge cases, and error semantics.
+
+### Decision
+
+Apply targeted fixes without broad refactors:
+
+- Use the same timezone for freshness window and Open-Meteo refresh (`city.timezone ?? "UTC"`)
+- After refresh, require a complete 7-day window aligned to local `fromDate`; reject incomplete provider windows
+- Validate Open-Meteo daily series length and `YYYY-MM-DD` dates; reject malformed geocoding optional fields instead of coercing to null
+- Skiing: subtract snow water equivalent from precipitation before the precip factor; warm viability gate (see 2026-10-02 entry)
+- Reasons: neutral fallback when no factor crosses material thresholds; omit misleading wind/precip reasons when warm gate zeros skiing
+- Do not wrap non-provider failures (e.g. persistence) as `EXTERNAL_PROVIDER_ERROR`
+
+Document remaining gaps (alias lookup, homonym cities, duplicate stale refresh, DB down → generic error) rather than adding speculative infrastructure.
+
+### Reason
+
+These changes address concrete correctness bugs found in review while keeping the MVP synchronous and minimal.

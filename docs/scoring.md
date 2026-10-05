@@ -24,8 +24,10 @@ Temperature factors use the daily mean:
 (temperatureMaxC + temperatureMinC) / 2
 ```
 
-Reasons are generated from the factors that materially influence the result
-(typically factor scores ≥ 70 or ≤ 40).
+Reasons are generated from factors that materially influence the result
+(typically factor scores ≥ 70 or ≤ 40). If none qualify, a single neutral
+fallback sentence is used (for example “Outdoor sightseeing conditions look mixed”)
+instead of describing middling factors as clearly good or bad.
 
 Implementation lives in `src/activities/` as pure functions over `DailyConditions`.
 

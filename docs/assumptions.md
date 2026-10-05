@@ -8,7 +8,7 @@ The assumptions are intentionally explicit and may be revisited as the implement
 
 **Question:** What does "next 7 days" mean?
 
-**Assumption:** Include today and the following six calendar days.
+**Assumption:** Include today and the following six calendar days in the city’s timezone (from geocoding). If timezone is missing, the service uses UTC for the window and Open-Meteo requests.
 
 ---
 
@@ -16,9 +16,13 @@ The assumptions are intentionally explicit and may be revisited as the implement
 
 **Question:** What should happen when multiple locations have the same name?
 
-**Assumption:** Use the most relevant result returned by the Open-Meteo geocoding service.
+**Assumption:** Use the most relevant result returned by the Open-Meteo geocoding service (`count=1`).
 
 **Future consideration:** Allow country or region to be supplied for disambiguation.
+
+**Question:** What if several persisted cities share the same display name?
+
+**Assumption:** `findByName` returns the most recently updated case-insensitive match. The MVP does not disambiguate homonyms (e.g. multiple “Paris” entries).
 
 ---
 
@@ -117,6 +121,10 @@ This is a pragmatic MVP value rather than a claim about the exact rate at which 
 **Question:** What should happen if Open-Meteo is unavailable?
 
 **MVP assumption:** If a refresh fails, the service may return the existing persisted forecast if one exists. If no forecast exists, the request should fail with an appropriate error.
+
+**Question:** What if PostgreSQL is down?
+
+**Assumption:** GraphQL returns `INTERNAL_SERVER_ERROR`. The client must have a running database matching `DATABASE_URL` (typically via `npm run db:up`).
 
 ---
 
