@@ -93,19 +93,37 @@ function mapGeocodingResult(
       result.longitude,
       `results[${index}].longitude`,
     ),
-    countryCode: optionalString(result.country_code),
-    country: optionalString(result.country),
-    admin1: optionalString(result.admin1),
-    timezone: optionalString(result.timezone),
-    elevationMeters: optionalNumber(result.elevation),
-    population: optionalNumber(result.population),
+    countryCode: optionalString(result.country_code, `results[${index}].country_code`),
+    country: optionalString(result.country, `results[${index}].country`),
+    admin1: optionalString(result.admin1, `results[${index}].admin1`),
+    timezone: optionalString(result.timezone, `results[${index}].timezone`),
+    elevationMeters: optionalNumber(result.elevation, `results[${index}].elevation`),
+    population: optionalNumber(result.population, `results[${index}].population`),
   };
 }
 
-function optionalString(value: unknown): string | null {
-  return typeof value === "string" ? value : null;
+function optionalString(value: unknown, fieldName: string): string | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+  if (typeof value !== "string") {
+    throw new OpenMeteoError(
+      `Open-Meteo geocoding ${fieldName} must be a string when present`,
+      "invalid_response",
+    );
+  }
+  return value;
 }
 
-function optionalNumber(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
+function optionalNumber(value: unknown, fieldName: string): number | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new OpenMeteoError(
+      `Open-Meteo geocoding ${fieldName} must be a finite number when present`,
+      "invalid_response",
+    );
+  }
+  return value;
 }

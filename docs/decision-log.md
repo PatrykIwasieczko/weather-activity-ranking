@@ -221,3 +221,31 @@ Concurrent requests for the same stale city can each trigger a duplicate Open-Me
 ### Reason
 
 This keeps GraphQL as a transport layer and matches the modular monolith boundaries in `AGENTS.md`.
+
+---
+
+## 2026-10-02 — Skiing warm-temperature viability gate
+
+### Question
+
+A weighted skiing model can score ~35 on a warm, dry, calm day with no snow (e.g. Warsaw in autumn) because wind and precipitation still contribute 35% even when snowfall and temperature are both zero. Is that acceptable?
+
+### Decision
+
+Keep the existing factor weights, but multiply the weighted skiing score by a warm-side viability factor derived from temperature:
+
+- at/below the full-score temperature band → no change
+- between the full-score high and the zero-high threshold → scale by `temperatureScore / 100`
+- at/above ~8°C mean → skiing score is `0`
+
+When the gate zeros the score, omit misleading positive wind/precipitation reasons.
+
+### Alternatives considered
+
+1. Raise snowfall weight further — still leaves wind+precip able to inflate warm dry days.
+2. Require snowfall > 0 for any non-zero score — rejects cold dry resort days that may still be ski-able with existing/base snow (MVP does not model snowpack).
+3. Hard zero only at ≥ 8°C with no taper — simpler, but leaves a cliff at the boundary; the taper matches the existing temperature curve.
+
+### Reason
+
+Temperature is a hard constraint for skiing suitability, not only a 25% comfort factor. Secondary factors should refine winter days, not manufacture mid scores when skiing is impossible.

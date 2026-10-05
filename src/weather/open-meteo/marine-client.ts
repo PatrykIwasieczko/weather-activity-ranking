@@ -3,6 +3,7 @@ import type {
   GeoCoordinates,
   MarineForecast,
 } from "../domain.js";
+import { isDateOnlyString } from "../../persistence/dates.js";
 import { OpenMeteoError } from "./errors.js";
 import {
   isNullableNumberArray,
@@ -55,7 +56,16 @@ export function createMarineClient(
       url.searchParams.set("cell_selection", "sea");
 
       const body = await requestOpenMeteoJson(url, options);
-      return mapMarineResponse(body);
+      const forecast = mapMarineResponse(body);
+
+      if (forecast.days.length !== forecastDays) {
+        throw new OpenMeteoError(
+          `Open-Meteo marine forecast returned ${forecast.days.length} days, expected ${forecastDays}`,
+          "invalid_response",
+        );
+      }
+
+      return forecast;
     },
   };
 }
@@ -81,6 +91,13 @@ export function mapMarineResponse(body: unknown): MarineForecast {
   if (!isStringArray(daily.time)) {
     throw new OpenMeteoError(
       "Open-Meteo marine daily.time must be a string array",
+      "invalid_response",
+    );
+  }
+
+  if (daily.time.some((date) => !isDateOnlyString(date))) {
+    throw new OpenMeteoError(
+      "Open-Meteo marine daily.time must contain YYYY-MM-DD dates",
       "invalid_response",
     );
   }

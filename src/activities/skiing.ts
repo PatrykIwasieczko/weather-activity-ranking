@@ -5,6 +5,7 @@ import {
   scoreFalling,
   scorePlateau,
   scoreRising,
+  toScore,
 } from "./helpers.js";
 import type { ActivityScore, DailyConditions } from "./types.js";
 
@@ -26,8 +27,27 @@ const SKI_WIND_ZERO_KMH = 60;
 const SKI_PRECIP_FULL_MM = 0;
 const SKI_PRECIP_ZERO_MM = 25;
 
+/**
+ * Warm days cannot support skiing (including artificial snow).
+ * Above the full-score temperature band, scale the whole activity score by
+ * temperature suitability so calm/dry weather cannot inflate a warm-day score.
+ * Extreme cold is not gated this way — it still uses the normal weighted model.
+ */
+function warmViabilityFactor(meanTempC: number, temperatureScore: number): number {
+  if (meanTempC <= SKI_TEMP_FULL_HIGH_C) {
+    return 1;
+  }
+  return temperatureScore / 100;
+}
+
 export function scoreSkiing(day: DailyConditions): ActivityScore {
   const meanTempC = meanTemperatureC(day);
+  // Open-Meteo precipitation_sum includes snow water equivalent.
+  // Approximate non-snow precip so snowfall is not also counted as "wet".
+  const nonSnowPrecipitationMm = Math.max(
+    0,
+    day.precipitationSumMm - day.snowfallSumCm / 7,
+  );
 
   const snowfallScore = scoreRising(
     day.snowfallSumCm,
@@ -47,7 +67,7 @@ export function scoreSkiing(day: DailyConditions): ActivityScore {
     SKI_WIND_ZERO_KMH,
   );
   const precipitationScore = scoreFalling(
-    day.precipitationSumMm,
+    nonSnowPrecipitationMm,
     SKI_PRECIP_FULL_MM,
     SKI_PRECIP_ZERO_MM,
   );
@@ -59,11 +79,26 @@ export function scoreSkiing(day: DailyConditions): ActivityScore {
     { name: "precipitation", score: precipitationScore, weight: 0.15 },
   ] as const;
 
-  return {
-    activity: "skiing",
-    score: combineWeightedScores(factors),
-    reasons: buildReasons(
-      [
+  const baseScore = combineWeightedScores(factors);
+  const viability = warmViabilityFactor(meanTempC, temperatureScore);
+  const tooWarmForSkiing = viability === 0;
+
+  // When skiing is impossible due to warmth, do not surface calm/dry "good"
+  // reasons — they are misleading next to a zero score.
+  const reasonCandidates = tooWarmForSkiing
+    ? [
+        {
+          score: snowfallScore,
+          good: "Fresh snowfall is expected",
+          bad: "Little or no snowfall is expected",
+        },
+        {
+          score: temperatureScore,
+          good: "Temperatures are suitable for skiing",
+          bad: "Temperatures are unsuitable for skiing",
+        },
+      ]
+    : [
         {
           score: snowfallScore,
           good: "Fresh snowfall is expected",
@@ -84,8 +119,11 @@ export function scoreSkiing(day: DailyConditions): ActivityScore {
           good: "Precipitation looks limited",
           bad: "Wet conditions may reduce comfort",
         },
-      ],
-      "Skiing conditions look mixed",
-    ),
+      ];
+
+  return {
+    activity: "skiing",
+    score: toScore(baseScore * viability),
+    reasons: buildReasons(reasonCandidates, "Skiing conditions look mixed"),
   };
 }

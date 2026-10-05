@@ -49,13 +49,35 @@ Implementation lives in `src/activities/` as pure functions over `DailyCondition
 | Snowfall      | 0 cm → 0; 10 cm+ → 100 (linear) |
 | Temperature   | Full score for mean about -12°C to -1°C; 0 at ≤ -25°C or ≥ 8°C |
 | Wind          | Full score at ≤ 20 km/h max; 0 at ≥ 60 km/h |
-| Precipitation | Full score at 0 mm; 0 at ≥ 25 mm |
+| Precipitation | Full score at 0 mm non-snow precip; 0 at ≥ 25 mm |
+
+Non-snow precipitation is approximated as:
+
+```text
+max(0, precipitationSumMm - snowfallSumCm / 7)
+```
+
+because Open-Meteo `precipitation_sum` includes snow water equivalent.
+
+### Warm-temperature viability gate
+
+After the weighted average, skiing applies a warm-side viability factor:
+
+- mean temperature ≤ about −1°C → factor `1` (no change)
+- mean temperature between about −1°C and 8°C → factor = `temperatureScore / 100`
+- mean temperature ≥ 8°C → factor `0` (final skiing score is `0`)
+
+This prevents calm, dry weather from producing a mid-range skiing score on warm days where skiing (including artificial snow) is not realistic.
+
+Extreme cold is not zeroed by this gate; it still uses the normal weighted model (temperature factor already scores poorly there).
+
+When the warm gate zeros the score, reasons omit positive wind/precipitation messages.
 
 ### Rationale
 
 Snowfall is the most important factor because fresh snow is generally relevant to skiing conditions.
 
-Temperature affects comfort and whether conditions are suitable for snow.
+Temperature affects comfort and whether conditions are suitable for snow. Above the winter band it is treated as a hard constraint, not only a 25% weight.
 
 Strong wind can reduce comfort and potentially affect skiing conditions.
 

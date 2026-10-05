@@ -34,7 +34,7 @@ describe("Open-Meteo forecast client", () => {
       expect(url.searchParams.get("daily")).toBe(
         FORECAST_DAILY_VARIABLES.join(","),
       );
-      expect(url.searchParams.get("forecast_days")).toBe("7");
+      expect(url.searchParams.get("forecast_days")).toBe("2");
       expect(url.searchParams.get("timezone")).toBe("auto");
 
       return jsonResponse(validForecastBody);
@@ -44,6 +44,7 @@ describe("Open-Meteo forecast client", () => {
     const forecast = await client.getDailyForecast({
       latitude: 52.52,
       longitude: 13.41,
+      forecastDays: 2,
     });
 
     expect(forecast).toEqual({
@@ -136,6 +137,38 @@ describe("Open-Meteo forecast client", () => {
       {
         kind: "http",
         messageIncludes: "Open-Meteo request failed",
+      },
+    );
+  });
+
+  it("throws when fewer days than requested are returned", async () => {
+    const client = createForecastClient({
+      httpGet: createMockHttpGet(() =>
+        jsonResponse({
+          latitude: 52.52,
+          longitude: 13.41,
+          timezone: "Europe/Berlin",
+          daily: {
+            time: ["2026-10-01"],
+            temperature_2m_max: [20],
+            temperature_2m_min: [10],
+            precipitation_sum: [0],
+            snowfall_sum: [0],
+            wind_speed_10m_max: [5],
+          },
+        }),
+      ),
+    });
+
+    await expectOpenMeteoError(
+      client.getDailyForecast({
+        latitude: 52.52,
+        longitude: 13.41,
+        forecastDays: 7,
+      }),
+      {
+        kind: "invalid_response",
+        messageIncludes: "expected 7",
       },
     );
   });

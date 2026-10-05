@@ -19,6 +19,7 @@ import { CityNotFoundError, ExternalProviderError } from "./errors.js";
 import {
   FORECAST_DAYS,
   FRESHNESS_MS,
+  forecastDateWindow,
   isCompleteForecastWindow,
   isFreshForecastWindow,
   localDateString,
@@ -107,6 +108,7 @@ async function resolveForecastForCity(
   currentTime: Date,
   freshnessMs: number,
 ): Promise<CityForecastResult> {
+  // Keep window calculation and Open-Meteo timezone identical when unknown.
   const timeZone = city.timezone ?? "UTC";
   const fromDate = localDateString(timeZone, currentTime);
 
@@ -128,10 +130,18 @@ async function resolveForecastForCity(
   }
 
   try {
-    const refreshed = await refreshAndPersist(deps, city, currentTime);
+    const refreshed = await refreshAndPersist(deps, city, currentTime, timeZone);
+    const windowDays = selectForecastWindow(refreshed, fromDate);
+
+    if (!isCompleteForecastWindow(windowDays, fromDate)) {
+      throw new ExternalProviderError(
+        "Provider returned an incomplete 7-day forecast window",
+      );
+    }
+
     return {
       city,
-      forecast: toCityForecastDays(refreshed),
+      forecast: toCityForecastDays(windowDays),
     };
   } catch (error) {
     if (complete) {
@@ -145,10 +155,8 @@ async function resolveForecastForCity(
       throw error;
     }
 
-    throw new ExternalProviderError(
-      "Failed to refresh weather forecast from provider",
-      { cause: error },
-    );
+    // Preserve non-provider failures (e.g. persistence errors) as-is.
+    throw error;
   }
 }
 
@@ -156,14 +164,13 @@ async function refreshAndPersist(
   deps: CityForecastServiceDeps,
   city: CityRecord,
   fetchedAt: Date,
+  timeZone: string,
 ): Promise<DailyForecastRecord[]> {
-  const timezone = city.timezone ?? "auto";
-
   const weather = await mapProviderCall(() =>
     deps.forecast.getDailyForecast({
       latitude: city.latitude,
       longitude: city.longitude,
-      timezone,
+      timezone: timeZone,
       forecastDays: FORECAST_DAYS,
     }),
   );
@@ -172,7 +179,7 @@ async function refreshAndPersist(
     .getDailyMarineForecast({
       latitude: city.latitude,
       longitude: city.longitude,
-      timezone,
+      timezone: timeZone,
       forecastDays: FORECAST_DAYS,
     })
     .catch(() => null);
@@ -200,6 +207,16 @@ async function refreshAndPersist(
     cityId: city.id,
     forecasts,
   });
+}
+
+function selectForecastWindow(
+  forecasts: ReadonlyArray<DailyForecastRecord>,
+  fromDate: string,
+): DailyForecastRecord[] {
+  const byDate = new Map(forecasts.map((forecast) => [forecast.date, forecast]));
+  return forecastDateWindow(fromDate)
+    .map((date) => byDate.get(date))
+    .filter((forecast): forecast is DailyForecastRecord => forecast !== undefined);
 }
 
 function toCityForecastDays(

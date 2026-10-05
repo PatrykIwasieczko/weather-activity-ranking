@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildReasons,
   clamp,
   combineWeightedScores,
   meanTemperatureC,
@@ -61,5 +62,19 @@ describe("scoring helpers", () => {
         { name: "b", score: 1000, weight: 1 },
       ]),
     ).toBe(100);
+
+    expect(toScore(Number.NaN)).toBe(0);
+  });
+
+  it("uses a neutral reason when no factor is material", () => {
+    expect(
+      buildReasons(
+        [
+          { score: 55, good: "GOOD wind", bad: "BAD wind" },
+          { score: 52, good: "GOOD temp", bad: "BAD temp" },
+        ],
+        "Conditions look mixed",
+      ),
+    ).toEqual(["Conditions look mixed"]);
   });
 });

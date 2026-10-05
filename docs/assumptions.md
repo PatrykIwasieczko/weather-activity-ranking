@@ -48,6 +48,10 @@ The score is not a scientific measurement or professional recommendation.
 
 Cloud cover is not included in the MVP because it is not considered sufficiently useful without a more complete visibility model.
 
+**Question:** Can calm/dry weather produce a meaningful skiing score on a warm day?
+
+**Assumption:** No. When the daily mean temperature is at or above about 8°C, skiing scores `0` regardless of wind and precipitation. Between about −1°C and 8°C the whole score is tapered by temperature suitability. The MVP does not model artificial-snow resorts as viable in warm weather.
+
 ---
 
 ## Outdoor sightseeing
@@ -123,6 +127,14 @@ This is a pragmatic MVP value rather than a claim about the exact rate at which 
 **MVP assumption:** Duplicate provider requests are possible.
 
 This is a known limitation of the synchronous lazy-refresh design. The MVP does not introduce Redis, queues, distributed locks, background workers, or scheduled jobs to prevent it. A later improvement could add request coalescing or locking if needed.
+
+---
+
+## City name aliases
+
+**Question:** What if the user searches an alias that geocodes to a city already cached under a different canonical name?
+
+**MVP assumption:** The first lookup is by the exact/case-insensitive stored name. Aliases (e.g. "Krakow" vs "Kraków") miss the DB cache and re-geocode. If geocoding is down, an alias search can fail even when a forecast already exists under the canonical name.
 
 ---
 

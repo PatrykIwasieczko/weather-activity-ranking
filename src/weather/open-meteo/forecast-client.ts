@@ -1,4 +1,5 @@
 import type { DailyWeather, GeoCoordinates, WeatherForecast } from "../domain.js";
+import { isDateOnlyString } from "../../persistence/dates.js";
 import { OpenMeteoError } from "./errors.js";
 import {
   FORECAST_DAILY_VARIABLES,
@@ -49,7 +50,16 @@ export function createForecastClient(
       url.searchParams.set("timezone", params.timezone ?? "auto");
 
       const body = await requestOpenMeteoJson(url, options);
-      return mapForecastResponse(body);
+      const forecast = mapForecastResponse(body);
+
+      if (forecast.days.length !== forecastDays) {
+        throw new OpenMeteoError(
+          `Open-Meteo forecast returned ${forecast.days.length} days, expected ${forecastDays}`,
+          "invalid_response",
+        );
+      }
+
+      return forecast;
     },
   };
 }
@@ -75,6 +85,13 @@ export function mapForecastResponse(body: unknown): WeatherForecast {
   if (!isStringArray(daily.time)) {
     throw new OpenMeteoError(
       "Open-Meteo forecast daily.time must be a string array",
+      "invalid_response",
+    );
+  }
+
+  if (daily.time.some((date) => !isDateOnlyString(date))) {
+    throw new OpenMeteoError(
+      "Open-Meteo forecast daily.time must contain YYYY-MM-DD dates",
       "invalid_response",
     );
   }

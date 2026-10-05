@@ -1,4 +1,4 @@
-export { addDays, formatDateOnly, parseDateOnly } from "./dates.js";
+export { addDays, formatDateOnly, isDateOnlyString, parseDateOnly } from "./dates.js";
 export {
   createCityRepository,
   type CityRepository,

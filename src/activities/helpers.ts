@@ -6,6 +6,9 @@ export function clamp(value: number, min: number, max: number): number {
 
 /** Round to an integer and clamp to the public 0–100 score range. */
 export function toScore(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
   return clamp(Math.round(value), 0, 100);
 }
 
@@ -127,7 +130,8 @@ export type ReasonCandidate = {
 
 /**
  * Collect human-readable reasons for factors that materially affect the score.
- * Guarantees at least one reason by falling back to the most extreme factor.
+ * If no factor crosses the good/bad thresholds, return the neutral fallback
+ * instead of inventing a positive/negative claim from a middling factor.
  */
 export function buildReasons(
   candidates: ReadonlyArray<ReasonCandidate>,
@@ -148,28 +152,6 @@ export function buildReasons(
 
   if (reasons.length > 0) {
     return reasons;
-  }
-
-  if (candidates.length === 0) {
-    return [fallbackNeutral];
-  }
-
-  let mostExtreme = candidates[0]!;
-  let bestDistance = Math.abs(mostExtreme.score - 50);
-
-  for (const candidate of candidates.slice(1)) {
-    const distance = Math.abs(candidate.score - 50);
-    if (distance > bestDistance) {
-      mostExtreme = candidate;
-      bestDistance = distance;
-    }
-  }
-
-  if (mostExtreme.score >= 50) {
-    return [mostExtreme.good];
-  }
-  if (mostExtreme.score < 50) {
-    return [mostExtreme.bad];
   }
 
   return [fallbackNeutral];

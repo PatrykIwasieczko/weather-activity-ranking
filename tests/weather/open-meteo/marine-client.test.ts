@@ -29,7 +29,7 @@ describe("Open-Meteo marine client", () => {
       expect(url.searchParams.get("daily")).toBe(
         MARINE_DAILY_VARIABLES.join(","),
       );
-      expect(url.searchParams.get("forecast_days")).toBe("7");
+      expect(url.searchParams.get("forecast_days")).toBe("2");
       expect(url.searchParams.get("timezone")).toBe("auto");
       expect(url.searchParams.get("cell_selection")).toBe("sea");
 
@@ -40,6 +40,7 @@ describe("Open-Meteo marine client", () => {
     const forecast = await client.getDailyMarineForecast({
       latitude: 54.54,
       longitude: 10.23,
+      forecastDays: 2,
     });
 
     expect(forecast).toEqual({
@@ -80,6 +81,7 @@ describe("Open-Meteo marine client", () => {
     const forecast = await client.getDailyMarineForecast({
       latitude: 52.52,
       longitude: 13.41,
+      forecastDays: 1,
     });
 
     expect(forecast.days).toEqual([
